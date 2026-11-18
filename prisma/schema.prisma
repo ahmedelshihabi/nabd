@@ -67,6 +67,7 @@ model Store {
   automations Automation[]
   events      Event[]
   proposals   AgentProposal[]
+  inbound     InboundMessage[]
 }
 
 model User {
@@ -112,6 +113,7 @@ model Customer {
 
   messages         Message[]
   events           Event[]
+  inbound          InboundMessage[]
 
   @@unique([storeId, externalId])
   @@index([storeId])
@@ -201,6 +203,21 @@ model Automation {
   // Ordered steps: [{ when, channel, action }]
   steps     Json
   createdAt DateTime @default(now())
+
+  @@index([storeId])
+}
+
+model InboundMessage {
+  id         String    @id @default(cuid())
+  storeId    String?
+  store      Store?    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  channel    Channel
+  fromAddr   String // phone or email the message came from
+  body       String
+  handled    Boolean   @default(false)
+  createdAt  DateTime  @default(now())
 
   @@index([storeId])
 }
