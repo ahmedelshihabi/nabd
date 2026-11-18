@@ -4,6 +4,21 @@
 
 **الحلقة الشغّالة دلوقتي:** ربط Shopify → سحب العملاء → توليد حملة بالـ AI → إرسال فعلي متتبَّع → فتح/ضغط/شراء → إيراد منسوب → تحليلات، مع أتمتة (عربة متروكة + ترحيب) والأمن والامتثال.
 
+## 🚀 نشر على رابط عام (Vercel)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fahmedelshihabi%2Fnabd&env=DATABASE_URL,APP_URL,APP_SECRET,ANTHROPIC_API_KEY)
+
+1. **قاعدة بيانات:** اعمل Postgres مجاني على [Neon](https://neon.tech) أو [Supabase](https://supabase.com) وانسخ رابط الاتصال (`DATABASE_URL`).
+2. **اضغط زر Deploy فوق**، واربط حساب GitHub، وحط المتغيّرات:
+   - `DATABASE_URL` — رابط Postgres
+   - `APP_URL` — رابط مشروعك على Vercel (مثلاً `https://nabd.vercel.app`)
+   - `APP_SECRET` — أي نص عشوائي طويل
+   - `ANTHROPIC_API_KEY` — مفتاح Claude (يشغّل الـ AI)
+3. **أنشئ الجداول:** محليًا `DATABASE_URL="..." npx prisma db push`، وبعدها `npm run seed` (اختياري لبيانات تجريبية).
+4. افتح رابط Vercel — النظام شغّال عام على النت ✅.
+
+> بعد النشر، تقدر تضيف باقي المفاتيح (Shopify, SES, WhatsApp, Twilio, Stripe) من إعدادات Vercel لتشغيل القنوات والفوترة.
+
 ## الـ Stack
 
 - **Next.js 16** + TypeScript + Tailwind
