@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { verifyWebhookHmac } from "@/lib/shopify";
 import { prisma } from "@/lib/prisma";
 import { attributeOrder } from "@/lib/attribution";
+import { sendWelcome } from "@/lib/automations/welcome";
 
 export const runtime = "nodejs";
 
@@ -53,6 +54,39 @@ async function handleTopic(
       const extId = customer?.id != null ? String(customer.id) : null;
       const value = parseFloat(String(payload.total_price ?? "")) || 0;
       await attributeOrder(store.id, extId, value);
+      break;
+    }
+    case "customers/create": {
+      // Sync the new customer, then fire the welcome automation.
+      const c = payload as {
+        id?: number;
+        email?: string;
+        phone?: string;
+        first_name?: string;
+        email_marketing_consent?: { state?: string };
+        sms_marketing_consent?: { state?: string };
+      };
+      if (c.id == null) break;
+      const saved = await prisma.customer.upsert({
+        where: { storeId_externalId: { storeId: store.id, externalId: String(c.id) } },
+        update: {
+          email: c.email ?? null,
+          phone: c.phone ?? null,
+          firstName: c.first_name ?? null,
+          consentEmail: c.email_marketing_consent?.state === "subscribed",
+          consentSms: c.sms_marketing_consent?.state === "subscribed",
+        },
+        create: {
+          storeId: store.id,
+          externalId: String(c.id),
+          email: c.email ?? null,
+          phone: c.phone ?? null,
+          firstName: c.first_name ?? null,
+          consentEmail: c.email_marketing_consent?.state === "subscribed",
+          consentSms: c.sms_marketing_consent?.state === "subscribed",
+        },
+      });
+      await sendWelcome(store.id, saved.id);
       break;
     }
     case "carts/update":
