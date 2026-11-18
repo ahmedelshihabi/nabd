@@ -16,6 +16,7 @@ import {
 } from "../lib/tokens";
 import { pickAttributableMessage } from "../lib/attribution";
 import { isCartAbandoned, selectAbandonedCarts } from "../lib/automations/abandoned-cart";
+import { hashPassword, verifyPassword } from "../lib/password";
 
 process.env.SHOPIFY_API_SECRET = "shpss_test_secret";
 process.env.APP_SECRET = "test_app_secret";
@@ -140,5 +141,12 @@ check(
     .join(",") === "ready",
 );
 
-console.log(`\n${failed === 0 ? "✅ ALL PASSED" : "❌ FAILURES"} — ${passed} passed, ${failed} failed\n`);
-process.exit(failed === 0 ? 0 : 1);
+(async () => {
+  console.log("\n9) Password hashing (auth)");
+  const pwHash = await hashPassword("s3cret-password");
+  check("verifies the correct password", await verifyPassword("s3cret-password", pwHash));
+  check("rejects a wrong password", !(await verifyPassword("wrong-password", pwHash)));
+
+  console.log(`\n${failed === 0 ? "✅ ALL PASSED" : "❌ FAILURES"} — ${passed} passed, ${failed} failed\n`);
+  process.exit(failed === 0 ? 0 : 1);
+})();

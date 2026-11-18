@@ -1,15 +1,19 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 import { storeStats } from "@/lib/stats";
+import { getSessionUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-function Empty({ note }: { note: string }) {
+function Empty({ note, login }: { note: string; login?: boolean }) {
   return (
     <main dir="rtl" style={{ fontFamily: "system-ui,sans-serif", maxWidth: 560, margin: "0 auto", padding: "64px 16px" }}>
       <h1 style={{ color: "#4136EC" }}>لوحة النبض</h1>
       <p style={{ color: "#6b6a78", marginTop: 8 }}>{note}</p>
-      <Link href="/connect" style={{ color: "#4136EC" }}>اربط متجرك للبدء ←</Link>
+      {login ? (
+        <Link href="/login" style={{ color: "#4136EC" }}>سجّل دخول ←</Link>
+      ) : (
+        <Link href="/connect" style={{ color: "#4136EC" }}>اربط متجرك للبدء ←</Link>
+      )}
     </main>
   );
 }
@@ -21,14 +25,14 @@ export default async function Dashboard({
 }) {
   const { store } = await searchParams;
 
-  let storeId = store;
+  let storeId = store; // ?store= override for local/demo (seed)
   let stats;
   try {
     if (!storeId) {
-      const first = await prisma.store.findFirst({ orderBy: { createdAt: "asc" } });
-      storeId = first?.id;
+      const user = await getSessionUser();
+      if (!user) return <Empty note="سجّل دخولك لعرض لوحة متجرك." login />;
+      storeId = user.storeId;
     }
-    if (!storeId) return <Empty note="مفيش متجر مربوط لسه." />;
     stats = await storeStats(storeId);
   } catch {
     return <Empty note="قاعدة البيانات مش متصلة — شغّل DATABASE_URL و prisma migrate." />;

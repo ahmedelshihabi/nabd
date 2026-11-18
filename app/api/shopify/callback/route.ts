@@ -6,6 +6,7 @@ import {
   exchangeToken,
 } from "@/lib/shopify";
 import { prisma } from "@/lib/prisma";
+import { getSessionUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -43,16 +44,30 @@ export async function GET(req: Request) {
   // Persist the connected store. NOTE: encrypt `accessToken` at rest before
   // production — plain storage here is a scaffold placeholder.
   try {
-    await prisma.store.upsert({
-      where: { domain: shop },
-      update: { accessToken: token },
-      create: {
-        domain: shop,
-        name: shop.replace(".myshopify.com", ""),
-        platform: "shopify",
-        accessToken: token,
-      },
-    });
+    const user = await getSessionUser();
+    if (user) {
+      // Link the Shopify store to the signed-in user's store.
+      await prisma.store.update({
+        where: { id: user.storeId },
+        data: {
+          domain: shop,
+          name: shop.replace(".myshopify.com", ""),
+          platform: "shopify",
+          accessToken: token,
+        },
+      });
+    } else {
+      await prisma.store.upsert({
+        where: { domain: shop },
+        update: { accessToken: token },
+        create: {
+          domain: shop,
+          name: shop.replace(".myshopify.com", ""),
+          platform: "shopify",
+          accessToken: token,
+        },
+      });
+    }
   } catch (err) {
     // DB not configured yet in this environment — surface clearly.
     const message = err instanceof Error ? err.message : "db_error";
