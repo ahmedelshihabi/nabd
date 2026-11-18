@@ -8,8 +8,15 @@ import {
   verifyOAuthHmac,
   verifyWebhookHmac,
 } from "../lib/shopify";
+import {
+  unsubToken,
+  verifyUnsub,
+  clickSig,
+  verifyClick,
+} from "../lib/tokens";
 
 process.env.SHOPIFY_API_SECRET = "shpss_test_secret";
+process.env.APP_SECRET = "test_app_secret";
 
 let passed = 0;
 let failed = 0;
@@ -79,6 +86,16 @@ const body = JSON.stringify({ id: 1, total_price: "100.00" });
 const webhookHmac = crypto.createHmac("sha256", "shpss_test_secret").update(body, "utf8").digest("base64");
 check("accepts a correctly signed webhook", verifyWebhookHmac(body, webhookHmac));
 check("rejects a forged webhook", !verifyWebhookHmac(body + "x", webhookHmac));
+
+console.log("\n6) Signed email links (unsubscribe + click)");
+const custId = "cus_123";
+const ut = unsubToken(custId);
+check("accepts a valid unsubscribe token", verifyUnsub(custId, ut));
+check("rejects unsubscribing another customer", !verifyUnsub("cus_999", ut));
+const dest = "https://store.example.com/winter";
+const cs = clickSig("msg_1", dest);
+check("accepts a valid click signature", verifyClick("msg_1", dest, cs));
+check("rejects a swapped redirect target", !verifyClick("msg_1", "https://evil.com", cs));
 
 console.log(`\n${failed === 0 ? "✅ ALL PASSED" : "❌ FAILURES"} — ${passed} passed, ${failed} failed\n`);
 process.exit(failed === 0 ? 0 : 1);
