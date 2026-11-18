@@ -39,6 +39,7 @@ export default function RootLayout({
           <Link href="/" style={linkStyle}>الحملات</Link>
           <Link href="/dashboard" style={linkStyle}>لوحة النبض</Link>
           <Link href="/connect" style={linkStyle}>اربط متجرك</Link>
+          <Link href="/billing" style={linkStyle}>الاشتراك</Link>
           <Link href="/login" style={{ ...linkStyle, color: "#6b6a78" }}>دخول</Link>
         </nav>
         {children}

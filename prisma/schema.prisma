@@ -49,6 +49,13 @@ model Store {
   name        String
   // Access tokens are encrypted at rest in the app layer, never stored raw.
   accessToken String?
+
+  // Billing (Stripe).
+  plan                 String  @default("free")
+  subscriptionStatus   String?
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
