@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { sendWhatsAppText } from "@/lib/whatsapp";
+import { sendSms } from "@/lib/sms";
 import { buildEmailHtml } from "@/lib/tracking";
 import type { Campaign } from "@prisma/client";
 
@@ -17,7 +18,7 @@ export async function sendCampaign(campaignId: string): Promise<SendSummary> {
   let summary: SendSummary;
   if (campaign.channel === "email") summary = await sendEmailCampaign(campaign);
   else if (campaign.channel === "whatsapp") summary = await sendWhatsAppCampaign(campaign);
-  else throw new Error(`channel_not_supported_yet:${campaign.channel}`);
+  else summary = await sendSmsCampaign(campaign);
 
   await prisma.campaign.update({
     where: { id: campaign.id },
@@ -79,6 +80,31 @@ async function sendWhatsAppCampaign(campaign: Campaign): Promise<SendSummary> {
     });
     try {
       await sendWhatsAppText(customer.phone!, campaign.whatsappMsg);
+      await prisma.message.update({ where: { id: message.id }, data: { status: "sent", sentAt: new Date() } });
+      sent++;
+    } catch {
+      await prisma.message.update({ where: { id: message.id }, data: { status: "failed" } });
+      failed++;
+    }
+  }
+  return { total: recipients.length, sent, failed };
+}
+
+async function sendSmsCampaign(campaign: Campaign): Promise<SendSummary> {
+  if (!campaign.smsMsg) throw new Error("campaign_missing_sms_message");
+
+  const recipients = await prisma.customer.findMany({
+    where: { storeId: campaign.storeId, consentSms: true, phone: { not: null } },
+  });
+
+  let sent = 0;
+  let failed = 0;
+  for (const customer of recipients) {
+    const message = await prisma.message.create({
+      data: { campaignId: campaign.id, customerId: customer.id, channel: "sms", status: "queued" },
+    });
+    try {
+      await sendSms(customer.phone!, campaign.smsMsg);
       await prisma.message.update({ where: { id: message.id }, data: { status: "sent", sentAt: new Date() } });
       sent++;
     } catch {
