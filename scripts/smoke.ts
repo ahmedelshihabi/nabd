@@ -14,6 +14,7 @@ import {
   clickSig,
   verifyClick,
 } from "../lib/tokens";
+import { pickAttributableMessage } from "../lib/attribution";
 
 process.env.SHOPIFY_API_SECRET = "shpss_test_secret";
 process.env.APP_SECRET = "test_app_secret";
@@ -96,6 +97,28 @@ const dest = "https://store.example.com/winter";
 const cs = clickSig("msg_1", dest);
 check("accepts a valid click signature", verifyClick("msg_1", dest, cs));
 check("rejects a swapped redirect target", !verifyClick("msg_1", "https://evil.com", cs));
+
+console.log("\n7) Revenue attribution rule");
+const now = new Date("2026-02-10T12:00:00Z");
+const d = (daysAgo: number) => new Date(now.getTime() - daysAgo * 86400000);
+check(
+  "prefers the most recent clicked message",
+  pickAttributableMessage(
+    [
+      { id: "a", clickedAt: d(5), openedAt: d(5) },
+      { id: "b", clickedAt: d(1), openedAt: d(1) },
+    ],
+    now,
+  ) === "b",
+);
+check(
+  "falls back to opened when none clicked",
+  pickAttributableMessage([{ id: "c", clickedAt: null, openedAt: d(2) }], now) === "c",
+);
+check(
+  "ignores touches outside the 7-day window",
+  pickAttributableMessage([{ id: "x", clickedAt: d(30), openedAt: d(30) }], now) === null,
+);
 
 console.log(`\n${failed === 0 ? "✅ ALL PASSED" : "❌ FAILURES"} — ${passed} passed, ${failed} failed\n`);
 process.exit(failed === 0 ? 0 : 1);

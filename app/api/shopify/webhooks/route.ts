@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { verifyWebhookHmac } from "@/lib/shopify";
 import { prisma } from "@/lib/prisma";
+import { attributeOrder } from "@/lib/attribution";
 
 export const runtime = "nodejs";
 
@@ -43,11 +44,17 @@ async function handleTopic(
   if (!store) return;
 
   switch (topic) {
-    case "orders/create":
+    case "orders/create": {
       await prisma.event.create({
         data: { storeId: store.id, type: "purchase", data: payload as Prisma.InputJsonValue },
       });
+      // Attribute the order's revenue back to the campaign that drove it.
+      const customer = payload.customer as { id?: number } | undefined;
+      const extId = customer?.id != null ? String(customer.id) : null;
+      const value = parseFloat(String(payload.total_price ?? "")) || 0;
+      await attributeOrder(store.id, extId, value);
       break;
+    }
     case "carts/update":
       // Signal for the abandoned-cart automation.
       await prisma.event.create({
