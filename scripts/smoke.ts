@@ -15,6 +15,7 @@ import {
   verifyClick,
 } from "../lib/tokens";
 import { pickAttributableMessage } from "../lib/attribution";
+import { isCartAbandoned, selectAbandonedCarts } from "../lib/automations/abandoned-cart";
 
 process.env.SHOPIFY_API_SECRET = "shpss_test_secret";
 process.env.APP_SECRET = "test_app_secret";
@@ -118,6 +119,25 @@ check(
 check(
   "ignores touches outside the 7-day window",
   pickAttributableMessage([{ id: "x", clickedAt: d(30), openedAt: d(30) }], now) === null,
+);
+
+console.log("\n8) Abandoned-cart selection");
+const mins = (m: number) => new Date(now.getTime() - m * 60000);
+check("a 90-min-old cart is abandoned", isCartAbandoned(mins(90), now));
+check("a 10-min-old cart is NOT yet abandoned", !isCartAbandoned(mins(10), now));
+check("a 2-day-old cart is too stale to chase", !isCartAbandoned(mins(60 * 48), now));
+check(
+  "selects only carts in the window",
+  selectAbandonedCarts(
+    [
+      { id: "fresh", createdAt: mins(5) },
+      { id: "ready", createdAt: mins(120) },
+      { id: "stale", createdAt: mins(60 * 48) },
+    ],
+    now,
+  )
+    .map((c) => c.id)
+    .join(",") === "ready",
 );
 
 console.log(`\n${failed === 0 ? "✅ ALL PASSED" : "❌ FAILURES"} — ${passed} passed, ${failed} failed\n`);
