@@ -1,0 +1,199 @@
+// Nabd — data model
+// Production DB: PostgreSQL. For the first slice the AI generation endpoint
+// does not need a live DB; `prisma generate` works offline, migrations need a DB.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Platform {
+  shopify
+  woocommerce
+  salla
+  zid
+}
+
+enum Channel {
+  email
+  whatsapp
+  sms
+}
+
+enum CampaignStatus {
+  draft
+  scheduled
+  sending
+  sent
+  paused
+}
+
+enum MessageStatus {
+  queued
+  sent
+  delivered
+  opened
+  clicked
+  bounced
+  failed
+}
+
+model Store {
+  id          String    @id @default(cuid())
+  platform    Platform
+  domain      String    @unique
+  name        String
+  // Access tokens are encrypted at rest in the app layer, never stored raw.
+  accessToken String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  users       User[]
+  customers   Customer[]
+  products    Product[]
+  campaigns   Campaign[]
+  segments    Segment[]
+  automations Automation[]
+  events      Event[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([storeId])
+}
+
+model Customer {
+  id               String    @id @default(cuid())
+  storeId          String
+  store            Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  externalId       String?
+  email            String?
+  phone            String?
+  firstName        String?
+  // Consent per channel — required for compliance (opt-in).
+  consentEmail     Boolean   @default(false)
+  consentWhatsapp  Boolean   @default(false)
+  consentSms       Boolean   @default(false)
+  totalSpent       Float     @default(0)
+  ordersCount      Int       @default(0)
+  lastOrderAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  messages         Message[]
+  events           Event[]
+
+  @@unique([storeId, externalId])
+  @@index([storeId])
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  storeId    String
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  externalId String
+  title      String
+  price      Float?
+  imageUrl   String?
+  url        String?
+  createdAt  DateTime @default(now())
+
+  @@unique([storeId, externalId])
+  @@index([storeId])
+}
+
+model Segment {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name      String
+  // Filter definition, e.g. { boughtWithinDays: 180, minOrders: 1 }
+  criteria  Json
+  createdAt DateTime @default(now())
+
+  @@index([storeId])
+}
+
+model Campaign {
+  id           String         @id @default(cuid())
+  storeId      String
+  store        Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name         String
+  goal         String
+  channel      Channel
+  status       CampaignStatus @default(draft)
+  lang         String         @default("ar")
+
+  // Generated content
+  subject      String?
+  preview      String?
+  body         String?
+  cta          String?
+  whatsappMsg  String?
+  smsMsg       String?
+  bestSendTime String?
+
+  scheduledAt  DateTime?
+  sentAt       DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  messages     Message[]
+
+  @@index([storeId])
+}
+
+model Message {
+  id         String        @id @default(cuid())
+  campaignId String
+  campaign   Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  channel    Channel
+  status     MessageStatus @default(queued)
+  // Attributed revenue from this message (post-click purchase).
+  revenue    Float         @default(0)
+  sentAt     DateTime?
+  openedAt   DateTime?
+  clickedAt  DateTime?
+
+  @@index([campaignId])
+  @@index([customerId])
+}
+
+model Automation {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  type      String   // welcome | abandoned_cart | post_purchase | winback | ...
+  name      String
+  enabled   Boolean  @default(false)
+  // Ordered steps: [{ when, channel, action }]
+  steps     Json
+  createdAt DateTime @default(now())
+
+  @@index([storeId])
+}
+
+model Event {
+  id         String    @id @default(cuid())
+  storeId    String
+  store      Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  type       String    // page_view | add_to_cart | checkout | purchase | ...
+  data       Json?
+  createdAt  DateTime  @default(now())
+
+  @@index([storeId])
+  @@index([customerId])
+}

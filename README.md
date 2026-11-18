@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nabd
 
-## Getting Started
+منصة تسويق بالذكاء الاصطناعي لمتاجر التجارة الإلكترونية — وكيل ذاتي يكتب وينفّذ حملات عبر الإيميل والواتساب والـ SMS.
 
-First, run the development server:
+> ده أول جزء شغّال من المشروع الحقيقي: **توليد حملة متعددة القنوات بالـ AI**. باقي الأجزاء (ربط Shopify، الإرسال الفعلي، التتبّع، الأتمتة) بتتبني فوق نفس الأساس حسب خريطة الطريق.
+
+## الـ Stack
+
+- **Next.js 16** + TypeScript + Tailwind CSS
+- **Prisma** + PostgreSQL (نموذج البيانات)
+- **Claude API** (توليد الحملات)
+- **Zod** (التحقق من مخرجات الـ AI)
+
+## التشغيل محليًا
 
 ```bash
+# 1) ثبّت الحزم
+npm install
+
+# 2) جهّز متغيّرات البيئة
+cp .env.example .env
+#    املأ ANTHROPIC_API_KEY (مطلوب لتوليد الحملة)
+#    و DATABASE_URL (مطلوب للـ migrations فقط، مش لتوليد الحملة)
+
+# 3) ولّد عميل Prisma
+npx prisma generate
+
+# 4) (اختياري) شغّل الـ migrations لو عندك قاعدة بيانات
+# npx prisma migrate dev --name init
+
+# 5) شغّل التطبيق
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+افتح http://localhost:3000، اكتب وصف متجرك وهدفك، واضغط **ابنِ الحملة**.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## البنية
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+app/
+  page.tsx                      واجهة توليد الحملة
+  api/campaigns/generate/route.ts   endpoint توليد الحملة بالـ AI
+lib/
+  anthropic.ts                  عميل Claude
+  campaign.ts                   مخطط الحملة (Zod) + بناء الـ prompt
+  prisma.ts                     عميل Prisma
+prisma/
+  schema.prisma                 نموذج البيانات (المتاجر، العملاء، الحملات، الرسائل، الأتمتة)
+```
 
-## Learn More
+## الخطوات التالية (خريطة الطريق)
 
-To learn more about Next.js, take a look at the following resources:
+1. **الأساس** — ربط Shopify (OAuth) + مزامنة البيانات
+2. **حملات الإيميل** — إرسال فعلي (Amazon SES) + تتبّع ← أول نسخة قابلة للاستخدام
+3. **الأتمتة والتحليلات** — flows + لوحة نبض حقيقية
+4. **واتساب + SMS**
+5. **التوسّع** — الصندوق الموحّد + الوكيل الذاتي + الفوترة
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## الأمن
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+بنتعامل مع بيانات عملاء المتاجر وصلاحيات إرسال وفلوس — فالأمن ركيزة أساسية:
+عزل بيانات كل متجر، تشفير المفاتيح، أقل صلاحيات ممكنة، والمدفوعات عبر مزوّد متوافق مع PCI (مش بنخزّن أرقام كروت).
