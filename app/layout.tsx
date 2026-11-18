@@ -38,6 +38,7 @@ export default function RootLayout({
           <div style={{ flex: 1 }} />
           <Link href="/" style={linkStyle}>الحملات</Link>
           <Link href="/dashboard" style={linkStyle}>لوحة النبض</Link>
+          <Link href="/agent" style={linkStyle}>الوكيل</Link>
           <Link href="/connect" style={linkStyle}>اربط متجرك</Link>
           <Link href="/billing" style={linkStyle}>الاشتراك</Link>
           <Link href="/login" style={{ ...linkStyle, color: "#6b6a78" }}>دخول</Link>

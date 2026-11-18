@@ -66,6 +66,7 @@ model Store {
   segments    Segment[]
   automations Automation[]
   events      Event[]
+  proposals   AgentProposal[]
 }
 
 model User {
@@ -199,6 +200,20 @@ model Automation {
   enabled   Boolean  @default(false)
   // Ordered steps: [{ when, channel, action }]
   steps     Json
+  createdAt DateTime @default(now())
+
+  @@index([storeId])
+}
+
+model AgentProposal {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  insight   String   // what the agent noticed in the data
+  action    String   // what it proposes to do
+  impact    String   // expected effect
+  status    String   @default("pending") // pending | executed | rejected
+  result    String?
   createdAt DateTime @default(now())
 
   @@index([storeId])
